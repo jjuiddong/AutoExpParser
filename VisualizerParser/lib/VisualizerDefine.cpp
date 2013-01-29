@@ -14,7 +14,6 @@ void visualizer_parser::PrintToken( Tokentype token, char *szTokenString )
 	{
 	case ID:
 	case STRING:	printf( "string = %s\n", szTokenString ); break;
-
 	case ASSIGN:	printf( "=" ); break;
 	case TIMES:		printf( "*" ); break;
 	case LPAREN:	printf( "(" ); break;
@@ -30,127 +29,11 @@ void visualizer_parser::PrintToken( Tokentype token, char *szTokenString )
 	}
 }
 
-/*
-//------------------------------------------------------------------------
-// typeStr: sArg->var->type
-// 스트링을 타입으로 리턴한다.
-//------------------------------------------------------------------------
-_variant_t network::GetTypeStr2Type(const std::string &typeStr)
-{
-	if (typeStr == "std::string")
-	{
-		char *v=NULL;
-		return _variant_t(v);
-	}
-	else if (typeStr == "string")
-	{
-		char *v=NULL;
-		return _variant_t(v);
-	}
-	else if (typeStr == "float")
-	{
-		float v=0.f;
-		return _variant_t(v);
-	}
-	else if (typeStr == "double")
-	{
-		double v=0.f;
-		return _variant_t(v);
-	}
-	else if (typeStr == "int")
-	{
-		int v=0;
-		return _variant_t(v);
-	}
-	else if (typeStr == "char")
-	{
-		char v='a';
-		return _variant_t(v);
-	}
-	else if (typeStr == "short")
-	{
-		short v=0;
-		return _variant_t(v);
-	}
-	else if (typeStr == "long")
-	{
-		long v=0;
-		return _variant_t(v);
-	}
-	else if (typeStr == "bool")
-	{
-		bool v=true;
-		return _variant_t(v);
-	}
-	else if (typeStr == "BOOL")
-	{
-		bool v=true;
-		return _variant_t(v);
-	}
-
-	return _variant_t(1);
-}
-
-
-//------------------------------------------------------------------------
-// packetID를 리턴한다. 여기서 Packet이란 sProtocol protocol을 의미하고, 
-// sRmi 의 자식으로 순서대로 번호가 매겨진 값이 Packet ID이다.
-//------------------------------------------------------------------------
-int	network::GetPacketID(sRmi *rmi, sProtocol *packet)
-{
-	if (!rmi) return 0;
-	if (!packet) return 0;
-
-	int id = rmi->number + 1;
-	sProtocol *p = rmi->protocol;
-	while (p)
-	{
-		if (p == packet)
-			break;
-		++id;
-		p = p->next;
-	}
-	return id;
-}
-
-
-//------------------------------------------------------------------------
-// 패킷내용을 스트링으로 변환 한다.
-//------------------------------------------------------------------------
-std::string network::Packet2String(const CPacket &packet, sProtocol *protocol)
-{
-	if (!protocol) return "";
-
-	std::stringstream ss;
-	CPacket tempPacket = packet;
-
-	int protocolID, packetID;
-	tempPacket >> protocolID >> packetID;
-
-	ss << protocol->name << " ";
-
-	sArg *arg = protocol->argList;
-	while (arg)
-	{
-		const _variant_t varType = GetTypeStr2Type(arg->var->type);
-		const _variant_t var = tempPacket.GetVariant(varType);
-
-		ss << arg->var->var + " = ";
-		ss << common::variant2string(var);
-		ss << ", ";
-
-		arg = arg->next;
-	}
-
-	return ss.str();
-}
-/**/
-
-
 SExpression* visualizer_parser::NewExpression( Kind kind )
 {
 	SExpression *p = new SExpression;
 	p->kind = kind;
+	p->rhs = NULL;
 	return p;
 }
 
@@ -158,5 +41,151 @@ SStatements* visualizer_parser::NewStatement( StatementKind kind )
 {
 	SStatements *p = new SStatements;
 	p->kind = kind;
+	p->next = NULL;
 	return p;
+}
+
+void RemoveStatements( SStatements *p);
+void RemoveExpression( SExpression*p );
+
+void RemoveElif_Stmt( SElif_Stmt *p)
+{
+	if (!p) return;
+	RemoveExpression(p->cond);
+	RemoveStatements(p->stmts);
+	RemoveElif_Stmt(p->next);
+	delete p;
+}
+
+void RemoveExpression( SExpression*p )
+{
+	if (!p) return;
+
+	switch (p->kind)
+	{
+	case CondExprK:
+	case AddTermK:
+	case MulTermK:
+	case IndirectK:
+		RemoveExpression( p->lhs );
+		break;
+
+	case VariableK:
+	case NumberK:
+	case StringK:
+		break;
+	}
+
+	RemoveExpression( p->rhs );
+	delete p;
+}
+
+void RemoveType_Stmt( SType_Stmt *p)
+{
+	if (!p) return;
+	if (p->templateArgs)
+	{
+		SType_TemplateArgs *tp = p->templateArgs;
+		while (tp)
+		{
+			RemoveType_Stmt(tp->type);
+			SType_TemplateArgs *next = tp->next;
+			delete tp;
+			tp = next;
+		}
+	}
+}
+
+void RemoveType_Stmts( SType_Stmts *p )
+{
+	if (!p) return;
+	RemoveType_Stmt(p->type);
+	RemoveType_Stmts(p->next);
+	delete p;
+}
+
+void RemoveStatements( SStatements *p)
+{
+	if (!p) return;
+
+	switch(p->kind)
+	{
+	case Stmt_StringLiteral: break;
+	case Stmt_Preview:
+	case Stmt_StringView:
+	case Stmt_Children:
+	case Stmt_Expression: 
+		RemoveExpression(p->exp); 
+		break;
+
+	case Stmt_SimpleExpression: 
+		RemoveExpression(p->simple_exp->expr);
+		RemoveExpression(p->simple_exp->text);
+		delete p->simple_exp;		
+		break;
+
+	case Stmt_If: 
+		RemoveExpression( p->if_stmt->cond );
+		RemoveElif_Stmt(p->if_stmt->elif_stmt);
+		RemoveStatements( p->if_stmt->else_stmts );
+		RemoveStatements( p->if_stmt->stmts );
+		delete p->if_stmt;
+		break;
+
+	case Stmt_Bracket_Iterator:
+		RemoveExpression( p->itor_stmt->stmts->base );
+		RemoveExpression( p->itor_stmt->stmts->expr );
+		RemoveExpression( p->itor_stmt->stmts->size );
+		RemoveExpression( p->itor_stmt->stmts->rank );
+		RemoveExpression( p->itor_stmt->stmts->base );
+		RemoveExpression( p->itor_stmt->stmts->next );
+		RemoveExpression( p->itor_stmt->stmts->left );
+		RemoveExpression( p->itor_stmt->stmts->right );
+		RemoveExpression( p->itor_stmt->stmts->skip );
+		RemoveExpression( p->itor_stmt->stmts->head );
+		delete p->itor_stmt->stmts;
+		RemoveStatements(p->itor_stmt->disp_stmt );
+		delete p->itor_stmt;
+		break;
+	}	
+
+	RemoveStatements(p->next);
+	delete p;
+}
+
+void RemoveDisp_Format( SDisp_Format*p)
+{
+	if (!p) return;
+	RemoveExpression(p->exp);
+	RemoveExpression(p->text);
+	delete p;
+}
+
+void RemoveVisualizer( SVisualizer *vis )
+{
+	if (!vis) return;
+	RemoveType_Stmts(vis->matchType);
+	RemoveStatements(vis->preview);
+	RemoveStatements(vis->stringview);
+	RemoveStatements(vis->children);
+	delete vis;
+}
+
+void RemoveAutoExp( SAutoExp *autoexp )
+{
+	if (!autoexp) return;
+	RemoveDisp_Format(autoexp->disp_format);
+	RemoveType_Stmts(autoexp->match_type);
+	delete autoexp;
+}
+
+void visualizer_parser::RemoveVisualizerScript(SVisualizerScript*p)
+{
+	if (!p) return;
+	if (p->kind == VisualizerScript_Visualizer)
+		RemoveVisualizer(p->vis);
+	else
+		RemoveAutoExp(p->autoexp);
+	RemoveVisualizerScript(p->next);	
+	delete p;
 }

@@ -66,6 +66,8 @@ SVisualizerScript* visualizer_parser::CParser::visualizerscript()
 	if (pAutoExp)
 	{
 		pVisScr = new SVisualizerScript;
+		pVisScr->next = NULL;
+
 		pAutoExp->match_type = pMatchType;
 		pVisScr->autoexp = pAutoExp;
 		pVisScr->kind = VisualizerScript_AutoExp;
@@ -76,6 +78,8 @@ SVisualizerScript* visualizer_parser::CParser::visualizerscript()
 		if (pVis)
 		{
 			pVisScr = new SVisualizerScript();
+			pVisScr->next = NULL;
+
 			pVis->matchType = pMatchType;
 			pVisScr->vis = pVis;
 			pVisScr->kind = VisualizerScript_Visualizer;
@@ -99,6 +103,9 @@ SVisualizer* visualizer_parser::CParser::visualizer()
 	{
 		Match(LBRACE);
 		p = new SVisualizer;
+		p->preview = NULL;
+		p->stringview = NULL;
+		p->children = NULL;
 
 		while (RBRACE != m_Token)
 		{
@@ -285,7 +292,8 @@ SSimpleExp* visualizer_parser::CParser::simple_exp()
 
 	Match(COLON);
 	Match(LBRACKET);
-	SExpression *subexp = expression();
+	p->expr = expression();
+
 	// format
 	if (COMMA == m_Token)
 		p->format = display_format();
@@ -329,6 +337,9 @@ SStatements* visualizer_parser::CParser::viscommand()
 SIf_Stmt* visualizer_parser::CParser::if_stmt() 
 {
 	SIf_Stmt *p = new SIf_Stmt;
+	p->elif_stmt = NULL;
+	p->else_stmts = NULL;
+
 	Match(IF);
 	Match(LPAREN);
 	p->cond = expression();
@@ -395,6 +406,7 @@ SVisBracketIterator_Stmt* visualizer_parser::CParser::visbracketiterator_stmt()
 	Match(m_Token);
 
 	p = new SVisBracketIterator_Stmt;
+	p->disp_stmt = NULL;
 	p->kind = kind;
 	p->stmts = bracket_inner_stmts();
 
@@ -417,6 +429,7 @@ SVisBracketIterator_Stmt* visualizer_parser::CParser::visbracketiterator_stmt()
 SBracket_Inner_Stmts* visualizer_parser::CParser::bracket_inner_stmts() 
 {
 	SBracket_Inner_Stmts *p = new SBracket_Inner_Stmts;
+	ZeroMemory(p, sizeof(SBracket_Inner_Stmts));
 
 	Match(LPAREN);
 
@@ -541,6 +554,8 @@ SDisp_Format* visualizer_parser::CParser::disp_format()
 SType_Stmts* visualizer_parser::CParser::types()
 {
 	SType_Stmts *p = new SType_Stmts;
+	p->next = NULL;
+
 	p->type = type();
 	if (LOGIC_OR == m_Token)
 	{
@@ -565,6 +580,7 @@ SType_Stmt* visualizer_parser::CParser::type()
 	if (ID == m_Token)
 	{
 		p = new SType_Stmt;
+		p->templateArgs = NULL;
 		p->id = m_pScan->GetTokenStringQ(0);
 		Match(ID);
 
@@ -599,6 +615,7 @@ SType_Stmt* visualizer_parser::CParser::type()
 	else if (TIMES == m_Token)
 	{
 		p = new SType_Stmt;
+		p->templateArgs = NULL;
 		p->id = "*";
 		Match(TIMES);
 	}	
@@ -610,6 +627,8 @@ SType_Stmt* visualizer_parser::CParser::type()
 SType_TemplateArgs* visualizer_parser::CParser::template_args()
 {
 	SType_TemplateArgs *p = new SType_TemplateArgs;
+	p->next = NULL;
+
 	p->type = type();
 	if (COMMA == m_Token)
 	{
@@ -933,3 +952,4 @@ void visualizer_parser::CParser::SyntaxError( char *szMsg, ... )
 	//printf( "Syntax error at line %s %d: %s", m_FileName, m_pScan->GetLineNo(), buf );
 	cout << "Syntax error at line " << m_fileName << " " << m_pScan->GetLineNo() <<  ": " << buf ;
 }
+

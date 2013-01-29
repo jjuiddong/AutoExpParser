@@ -73,37 +73,5 @@ namespace visualizer_parser
 		bool IsMultiOp(Tokentype tok);
 		bool IsPrefixOp(Tokentype tok);
 
-
-		// expr -> rmi_list
-		// rmi_list -> (rmi)*
-		// rmi -> protocol id number '{' stmt_list '}'
-		// stmt_list -> (stmt)*
-		// stmt -> protocol semicolon
-		// protocol -> id '(' arg_list ')'
-		// arg_list -> [arg (',' arg)*]
-		// arg -> type
-		// type -> type_sub (var)?
-		// type_sub -> id '<' type_sub '>'
-		//			| id::id
-		//			| id
-		// var -> '*' id (index)?
-		//	    | '&' id (index)?
-		//		| id (index)?
-		//	    | '*'
-		//		| '&'
-		// index -> '[' (number)? ']'
-
-		sRmi* rmi_list();
-		sRmi* rmi();
-		sProtocol* stmt_list();
-		sProtocol* stmt();
-		sProtocol* protocol();
-		sArg* arg_list();
-		sArg* arg();
-		//sTypeVar* type();
-		//std::string type_sub();
-		std::string var();
-		std::string index();
-
 	};
 }

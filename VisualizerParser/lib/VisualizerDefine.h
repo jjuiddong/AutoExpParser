@@ -38,54 +38,15 @@ namespace visualizer_parser
 	enum NodeKind { Stmt, Exp };
 	enum Kind
 	{
-		ProgramK, TutorialK, RoleTutorialK, TrainingK, PracticeK, StatementK, AIK, EventK, UIEventK, 
-		CustomEventK, SuccessK, FailK, AssignK,
-		ScriptWaitK, ScriptEndK, ScriptExitK, // statement
-
-		//TypeK, 
-		ConditionOpK, ConditionTreeK, OpK, IdK, FuncK, ParamK, ConstIntK, ConstFloatK, ConstStrK, CallK, // exp
-
 		// expression
-		CondExprK, AddTermK, MulTermK, FactorK, VariableK, IndirectK, NumberK, StringK, ExpressionK, TypeK, TextK, DispFormatK,
+		CondExprK, AddTermK, MulTermK, VariableK, IndirectK, NumberK, StringK, 
 
 		// statement
-
-
 	};
 
 	enum { MAXCHILD=8, };
 
 	enum eCONDITION_OP { OP_NONE, OP_AND, OP_OR, OP_NEG, OP_LT, OP_RT, OP_LTEQ, OP_RTEQ, OP_EQ, OP_NEQ };
-
-
-	typedef struct _sTypeVar
-	{
-		std::string type;
-		std::string var;
-
-	} sTypeVar;
-
-	typedef struct _sArg
-	{
-		sTypeVar *var;
-		_sArg *next;
-	} sArg;
-
-	typedef struct _sProtocol
-	{
-		std::string name;
-		sArg *argList;
-		_sProtocol *next;
-	} sProtocol;
-
-	typedef struct _sRmi
-	{
-		std::string name;
-		int number;
-		sProtocol *protocol;
-		_sRmi *next;
-	} sRmi;
-
 
 	struct SStatements;
 
@@ -256,12 +217,9 @@ namespace visualizer_parser
 	SExpression* NewExpression( Kind kind );
 	SStatements* NewStatement( StatementKind kind );
 
-
 	// Functions
 	void PrintToken( Tokentype token, char *szTokenString );
-// 	_variant_t	GetTypeStr2Type(const std::string &typeStr); // sArg->var->type
-// 	int			GetPacketID(sRmi *rmi, sProtocol *packet);
-// 	std::string Packet2String(const CPacket &packet, sProtocol *protocol);
+	void RemoveVisualizerScript(SVisualizerScript*p);
 
 }
 
