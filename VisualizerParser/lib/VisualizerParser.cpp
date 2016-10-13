@@ -5,6 +5,11 @@
 using namespace visualizer_parser;
 using namespace std;
 
+// #ifdef _DEBUG
+// #define new DEBUG_NEW
+// #endif
+
+
 visualizer_parser::CParser::CParser() 
 {
 	m_pScan = new CScanner();
@@ -77,12 +82,16 @@ SVisualizerScript* visualizer_parser::CParser::visualizerscript()
 		SVisualizer *pVis = visualizer();
 		if (pVis)
 		{
-			pVisScr = new SVisualizerScript();
+			pVisScr = new SVisualizerScript;
 			pVisScr->next = NULL;
 
 			pVis->matchType = pMatchType;
 			pVisScr->vis = pVis;
 			pVisScr->kind = VisualizerScript_Visualizer;
+		}
+		else
+		{
+			visualizer_parser::RemoveType_Stmts(pMatchType);
 		}
 	}
 	if (pVisScr)
@@ -107,14 +116,15 @@ SVisualizer* visualizer_parser::CParser::visualizer()
 		p->stringview = NULL;
 		p->children = NULL;
 
-		while (RBRACE != m_Token)
+		bool loop = true;
+		while (RBRACE != m_Token && loop)
 		{
 			switch (m_Token)
 			{
 			case PREVIEW: p->preview = preview(); break;
 			case STRINGVIEW: p->stringview = stringview(); break;
 			case CHILDREN: p->children = children(); break;
-			default: break;
+			default: loop = false; break;
 			}
 		}
 		Match(RBRACE);
@@ -197,7 +207,41 @@ SStatements* visualizer_parser::CParser::statements()
 	}
 	else
 	{
-		SExpression *text = expression();
+		bool isSimplExp = false;
+		if (LBRACKET == m_Token)
+		{
+			for (int i=1; i < 4; ++i)
+			{
+				if (RBRACKET == m_pScan->GetTokenQ(i))
+				{
+					if (COLON == m_pScan->GetTokenQ(i+1))
+					{
+						isSimplExp = true;
+						break;
+					}					
+				}
+			}			
+		}
+
+		SExpression *text = NULL;
+		if (isSimplExp)
+		{
+			text = NewExpression(StringK);
+			Match(LBRACKET);
+			int cnt = 0; // 오류처리를 위한 코드
+			while (RBRACKET != m_Token && cnt < 10)
+			{
+				text->str += m_pScan->GetTokenStringQ(0);
+				Match(m_Token);
+				++cnt;
+			}
+			Match(RBRACKET);
+		}
+		else
+		{
+			text = expression();
+		}		
+
 		if (COLON == m_Token)
 		{
 			SSimpleExp *sim_exp = simple_exp();
@@ -260,7 +304,7 @@ Display_Format visualizer_parser::CParser::display_format()
 	}
 	else
 	{
-		Match(STRING);
+		Match(ID);
 	}
 	return reval;
 }
@@ -283,6 +327,7 @@ bool visualizer_parser::CParser::IsVisCommand(Tokentype tok)
 
 
 // 		simple_exp ->	text ':' '[' expression [,format] ']'
+//							| '[' expression [,format] ']'
 // 			;
 SSimpleExp* visualizer_parser::CParser::simple_exp()
 { 
@@ -553,10 +598,12 @@ SDisp_Format* visualizer_parser::CParser::disp_format()
 // types -> type { | type }
 SType_Stmts* visualizer_parser::CParser::types()
 {
-	SType_Stmts *p = new SType_Stmts;
-	p->next = NULL;
+	SType_Stmt *pt = type();
+	if (!pt) return NULL;
 
-	p->type = type();
+	SType_Stmts *p = new SType_Stmts;
+	p->type = pt;
+	p->next = NULL;
 	if (LOGIC_OR == m_Token)
 	{
 		Match(LOGIC_OR);
@@ -860,14 +907,15 @@ SExpression* visualizer_parser::CParser::primary_expression()
 
 	case LBRACKET:
 		{
-			p = NewExpression(StringK);
+//			p = NewExpression(StringK);
 			Match(LBRACKET);
-			int cnt = 0; // 오류처리를 위한 코드
-			while (RBRACKET != m_Token && cnt < 10)
+			p = expression();
+			if (COMMA == m_Token) // display format
 			{
-				p->str += m_pScan->GetTokenStringQ(0);
-				Match(m_Token);
-				++cnt;
+				SExpression *pnew = NewExpression(DispFormatK);
+				pnew->dispFormat = display_format();
+				pnew->rhs = p;
+				p = pnew;
 			}
 			Match(RBRACKET);
 		}

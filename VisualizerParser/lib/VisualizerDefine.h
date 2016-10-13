@@ -39,7 +39,7 @@ namespace visualizer_parser
 	enum Kind
 	{
 		// expression
-		CondExprK, AddTermK, MulTermK, VariableK, IndirectK, NumberK, StringK, 
+		CondExprK, AddTermK, MulTermK, VariableK, IndirectK, NumberK, StringK, DispFormatK,
 
 		// statement
 	};
@@ -49,6 +49,23 @@ namespace visualizer_parser
 	enum eCONDITION_OP { OP_NONE, OP_AND, OP_OR, OP_NEG, OP_LT, OP_RT, OP_LTEQ, OP_RTEQ, OP_EQ, OP_NEQ };
 
 	struct SStatements;
+
+
+	enum Display_Format
+	{
+		Disp_D,
+		Disp_U,
+		Disp_O,
+		Disp_X,
+		Disp_L,
+		Disp_F,
+		Disp_E,
+		Disp_G,
+		Disp_C,
+		Disp_S,
+		Disp_SU,
+		Disp_Auto,
+	};
 
 	struct SExpression
 	{
@@ -62,6 +79,7 @@ namespace visualizer_parser
 		float num;
 		std::string str;
 		SExpression *lhs;
+		Display_Format dispFormat;
 //		}
 
 		SExpression *rhs;
@@ -84,23 +102,6 @@ namespace visualizer_parser
 	{
 		SType_Stmt *type;
 		SType_Stmts *next;
-	};
-
-
-	enum Display_Format
-	{
-		Disp_D,
-		Disp_U,
-		Disp_O,
-		Disp_X,
-		Disp_L,
-		Disp_F,
-		Disp_E,
-		Disp_G,
-		Disp_C,
-		Disp_S,
-		Disp_SU,
-		Disp_Auto,
 	};
 
 	struct SDisp_Format
@@ -170,9 +171,6 @@ namespace visualizer_parser
 		Stmt_StringLiteral,
 		Stmt_Expression,
 		Stmt_SimpleExpression,
-		Stmt_Preview,
-		Stmt_StringView,
-		Stmt_Children,
 		Stmt_If,
 		Stmt_Bracket_Iterator,
 	};
@@ -180,7 +178,6 @@ namespace visualizer_parser
 	struct SStatements
 	{
 		StatementKind kind;
-		std::string str_literal;
 		union {
 			SExpression *exp;
 			SSimpleExp *simple_exp;
@@ -220,6 +217,8 @@ namespace visualizer_parser
 	// Functions
 	void PrintToken( Tokentype token, char *szTokenString );
 	void RemoveVisualizerScript(SVisualizerScript*p);
+	void RemoveType_Stmt( SType_Stmt *p);
+	void RemoveType_Stmts( SType_Stmts *p );
 
 }
 
